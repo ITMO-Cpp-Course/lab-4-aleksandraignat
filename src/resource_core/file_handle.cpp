@@ -1,11 +1,11 @@
 #include "resource_core/file_handle.hpp"
 
-#include <cerrno>  // для errno
-#include <cstring> // для std::strlen
+#include <cerrno> 
+#include <cstring> 
 
 namespace lab4::resource {
 
-	// ====================== Конструкторы и деструктор ======================
+	// Конструкторы и деструктор
 
 	FileHandle::FileHandle(const std::string& filename, const std::string& mode) : filename_(filename) {
 		// Делегируем открытие методу open()
@@ -36,11 +36,11 @@ namespace lab4::resource {
 	}
 
 	FileHandle::~FileHandle() {
-		// Автоматическое освобождение ресурса — главный принцип RAII!
+		// Автоматическое освобождение ресурса
 		close();
 	}
 
-	// ====================== Открытие и закрытие ======================
+	// Открытие и закрытие
 
 	void FileHandle::open(const std::string& filename, const std::string& mode) {
 		// Нельзя открыть файл, если уже открыт другой
@@ -52,7 +52,7 @@ namespace lab4::resource {
 		file_ = std::fopen(filename.c_str(), mode.c_str());
 
 		if (!file_) {
-			// Если не удалось, бросаем исключение с информацией об ошибке
+			// Если не удалось, исключение с информацией об ошибке
 			throw ResourceError("Failed to open file: " + filename + " (errno: " + std::to_string(errno) +
 								")");
 		}
@@ -68,7 +68,7 @@ namespace lab4::resource {
 		}
 	}
 
-	// ====================== Вспомогательные методы ======================
+	// Вспомогательные методы
 
 	void FileHandle::check_open() const {
 		if (!is_open()) {
@@ -76,7 +76,7 @@ namespace lab4::resource {
 		}
 	}
 
-	// ====================== Чтение и запись ======================
+	// Чтение и запись
 
 	std::string FileHandle::read_line() {
 		check_open(); // Убеждаемся, что файл открыт
@@ -85,15 +85,15 @@ namespace lab4::resource {
 
 		// Читаем одну строку (до '\n' или конца файла)
 		if (std::fgets(buffer, sizeof(buffer), file_) == nullptr) {
-			// Если достигнут конец файла — возвращаем пустую строку
+			// Если достигнут конец файла возвращаем пустую строку
 			if (std::feof(file_)) {
 				return "";
 			}
-			// Иначе — ошибка чтения
+			// Иначе ошибка чтения
 			throw ResourceError("Failed to read line from file: " + filename_);
 		}
 
-		// Удаляем символ новой строки из конца строки (если он есть)
+		// Удаляем символ новой строки из конца строки
 		size_t len = std::strlen(buffer);
 		if (len > 0 && buffer[len - 1] == '\n') {
 			buffer[len - 1] = '\0';
@@ -114,4 +114,4 @@ namespace lab4::resource {
 		std::fflush(file_);
 	}
 
-} // namespace lab4::resource
+}
