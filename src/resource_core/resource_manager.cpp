@@ -3,15 +3,14 @@
 
 namespace lab4::resource {
 
-	// ====================== Синглтон ======================
-
+	// Синглтон
 	ResourceManager& ResourceManager::instance() {
-		// Статическая локальная переменная — потокобезопасна в C++11 и новее
+		// Статическая локальная переменная
 		static ResourceManager manager;
 		return manager;
 	}
 
-	// ====================== Управление кешем ======================
+	// Управление кешем
 
 	std::shared_ptr<FileHandle> ResourceManager::get_file(const std::string& filename, const std::string& mode) {
 		// Блокируем мьютекс для потокобезопасного доступа к кешу
@@ -25,11 +24,10 @@ namespace lab4::resource {
 			auto shared = it->second.lock();
 
 			if (shared) {
-				// Ура! Ресурс ещё жив, возвращаем его
+				// возвращаем ресурс
 				return shared;
 			}
 			else {
-				// weak_ptr истёк — объект уже уничтожен (никто не использует файл)
 				// Удаляем устаревшую запись из кеша
 				cache_.erase(it);
 			}
@@ -38,7 +36,7 @@ namespace lab4::resource {
 		// Создаём новый ресурс (открываем файл)
 		auto file = std::make_shared<FileHandle>(filename, mode);
 
-		// Сохраняем weak_ptr в кеш (чтобы при повторном запросе вернуть тот же объект)
+		// Сохраняем weak_ptr в кеш
 		cache_[filename] = file;
 
 		return file;
@@ -54,4 +52,4 @@ namespace lab4::resource {
 		cache_.clear();
 	}
 
-} // namespace lab4::resource
+}
