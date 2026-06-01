@@ -3,54 +3,54 @@
 namespace lab4::resource
 {
 
-// Синглтон
 ResourceManager& ResourceManager::instance()
 {
-    // Статическая локальная переменная
     static ResourceManager manager;
     return manager;
 }
 
-// Управление кешем
-
 std::shared_ptr<FileHandle> ResourceManager::get_file(const std::string& filename, const std::string& mode)
 {
-    // Блокируем мьютекс для потокобезопасного доступа к кешу
     std::lock_guard<std::mutex> lock(mutex_);
-
-    // Ищем файл в кеше
-    auto it = cache_.find(filename);
-
+    
+    CacheKey key{filename, mode};
+    auto it = cache_.find(key);
+    
     if (it != cache_.end())
     {
-        // Пытаемся получить shared_ptr из weak_ptr
         auto shared = it->second.lock();
-
+        
         if (shared)
         {
-            // возвращаем ресурс
             return shared;
         }
         else
         {
-            // Удаляем устаревшую запись из кеша
             cache_.erase(it);
         }
     }
-
-    // Создаём новый ресурс (открываем файл)
+    
     auto file = std::make_shared<FileHandle>(filename, mode);
-
-    // Сохраняем weak_ptr в кеш
-    cache_[filename] = file;
-
+    cache_[key] = file;
+    
     return file;
 }
 
 void ResourceManager::evict(const std::string& filename)
 {
     std::lock_guard<std::mutex> lock(mutex_);
-    cache_.erase(filename);
+    
+    for (auto it = cache_.begin(); it != cache_.end(); )
+    {
+        if (it->first.filename == filename)
+        {
+            it = cache_.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
 }
 
 void ResourceManager::clear()
@@ -59,4 +59,4 @@ void ResourceManager::clear()
     cache_.clear();
 }
 
-} // namespace lab4::resource
+}
