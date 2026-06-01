@@ -10,9 +10,18 @@
 namespace lab4::resource
 {
 
+struct CacheKey {
+    std::string filename;
+    std::string mode;
+    
+    bool operator==(const CacheKey& other) const {
+        return filename == other.filename && mode == other.mode;
+    }
+};
+
 class ResourceManager
 {
-  public:
+public:
     static ResourceManager& instance();
 
     ResourceManager(const ResourceManager&) = delete;
@@ -26,12 +35,22 @@ class ResourceManager
 
     void clear();
 
-  private:
+private:
     ResourceManager() = default;
 
-    std::unordered_map<std::string, std::weak_ptr<FileHandle>> cache_;
+    std::unordered_map<CacheKey, std::weak_ptr<FileHandle>> cache_;
 
     std::mutex mutex_;
 };
 
-} // namespace lab4::resource
+}
+
+namespace std
+{
+    template<>
+    struct hash<lab4::resource::CacheKey> {
+        size_t operator()(const lab4::resource::CacheKey& key) const {
+            return hash<string>()(key.filename) ^ (hash<string>()(key.mode) << 1);
+        }
+    };
+}
