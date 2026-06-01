@@ -6,34 +6,26 @@
 namespace lab4::resource
 {
 
-// Конструкторы и деструктор
-
-FileHandle::FileHandle(const std::string& filename, const std::string& mode) : filename_(filename)
+FileHandle::FileHandle(const std::string& filename, const std::string& mode)
+    : file_(nullptr), filename_()
 {
-    // Делегируем открытие методу open()
     open(filename, mode);
 }
 
 FileHandle::FileHandle(FileHandle&& other) noexcept
-    : file_(other.file_) // Забираем указатель
-      ,
-      filename_(std::move(other.filename_)) // Перемещаем строку
+    : file_(other.file_)
+    , filename_(std::move(other.filename_))
 {
-    // Обнуляем исходный объект, чтобы он не закрыл файл при своём уничтожении
     other.file_ = nullptr;
 }
 
 FileHandle& FileHandle::operator=(FileHandle&& other) noexcept
 {
     if (this != &other)
-    {            // Защита от самоприсваивания
-        close(); // Закрываем текущий файл, если он открыт
-
-        // Перемещаем ресурс
+    {
+        close();
         file_ = other.file_;
         filename_ = std::move(other.filename_);
-
-        // Обнуляем исходный объект
         other.file_ = nullptr;
     }
     return *this;
@@ -41,29 +33,24 @@ FileHandle& FileHandle::operator=(FileHandle&& other) noexcept
 
 FileHandle::~FileHandle()
 {
-    // Автоматическое освобождение ресурса
     close();
 }
 
-// Открытие и закрытие
-
 void FileHandle::open(const std::string& filename, const std::string& mode)
 {
-    // Нельзя открыть файл, если уже открыт другой
     if (is_open())
     {
         throw ResourceError("FileHandle already open: " + filename_);
     }
 
-    // Пытаемся открыть файл через стандартную функцию C
-    file_ = std::fopen(filename.c_str(), mode.c_str());
+    std::FILE* new_file = std::fopen(filename.c_str(), mode.c_str());
 
-    if (!file_)
+    if (!new_file)
     {
-        // Если не удалось, исключение с информацией об ошибке
         throw ResourceError("Failed to open file: " + filename + " (errno: " + std::to_string(errno) + ")");
     }
 
+    file_ = new_file;
     filename_ = filename;
 }
 
@@ -71,13 +58,14 @@ void FileHandle::close()
 {
     if (file_)
     {
-        std::fclose(file_); // Закрываем файл
-        file_ = nullptr;    // Обнуляем указатель
-        filename_.clear();  // Очищаем имя файла
+        if (std::fclose(file_) != 0)
+        {
+            throw ResourceError("Failed to close file: " + filename_);
+        }
+        file_ = nullptr;
+        filename_.clear();
     }
 }
-
-// Вспомогательные методы
 
 void FileHandle::check_open() const
 {
@@ -87,27 +75,21 @@ void FileHandle::check_open() const
     }
 }
 
-// Чтение и запись
-
 std::string FileHandle::read_line()
 {
-    check_open(); // Убеждаемся, что файл открыт
+    check_open();
 
-    char buffer[4096]; // Буфер для чтения строки
+    char buffer[4096];
 
-    // Читаем одну строку (до '\n' или конца файла)
     if (std::fgets(buffer, sizeof(buffer), file_) == nullptr)
     {
-        // Если достигнут конец файла возвращаем пустую строку
         if (std::feof(file_))
         {
             return "";
         }
-        // Иначе ошибка чтения
         throw ResourceError("Failed to read line from file: " + filename_);
     }
 
-    // Удаляем символ новой строки из конца строки
     size_t len = std::strlen(buffer);
     if (len > 0 && buffer[len - 1] == '\n')
     {
@@ -119,16 +101,14 @@ std::string FileHandle::read_line()
 
 void FileHandle::write_line(const std::string& data)
 {
-    check_open(); // Убеждаемся, что файл открыт
+    check_open();
 
-    // Записываем строку с добавлением '\n'
     if (std::fprintf(file_, "%s\n", data.c_str()) < 0)
     {
         throw ResourceError("Failed to write to file: " + filename_);
     }
 
-    // Сбрасываем буфер, чтобы данные точно попали на диск
     std::fflush(file_);
 }
 
-} // namespace lab4::resource
+}
